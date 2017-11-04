@@ -1,50 +1,30 @@
 'use strict'
-const Heap = require('heap');
 
-const iterative = (logSources, printer) => {
-  const sourceQty = logSources.length;
-  let drainedSources = 0;
-  let minIndex;
-  
-  // iterate until all sources are drained
-  while (drainedSources < sourceQty - 1) {
-    // initialize minimum value for date on each iteration
+module.exports = (logSources, printer) => {
+  // initialise list to be printed
+  const printQueue = logSources.map(source => source.pop());
+  // initialise flag to indicate > 1 sources are active
+  let activeSources = true;
+  while (activeSources) {
+    activeSources = false;
     let min = Infinity;
-    // reset drained entries count on each iteration
-    drainedSources = 0;
-    // count drained sources and get oldest entry
-    for (let i = 0; i < sourceQty; i += 1) {
-      if (!logSources[i].last) {
-        drainedSources += 1;
-      } else if (logSources[i].last.date < min) {
-        min = logSources[i].last.date;
-        minIndex = i;
+    let toPrint;
+    for (let i = 0; i < printQueue.length; i += 1) {
+      // check current source not drained
+      if (printQueue[i]) {
+        activeSources = true;
+        // update oldest value and index of record to print
+        if (printQueue[i].date < min) {
+          min = printQueue[i].date;
+          toPrint = i;
+        }
       }
     }
-    printer.print(logSources[minIndex].last);
-    // replace printed entry with next
-    logSources[minIndex].last = logSources[minIndex].pop();
-  }
-  printer.done();
-};
-
-const minHeap = (logSources, printer) => {
-  const entries = new Heap((a, b) => a.last.date - b.last.date);
-
-  logSources.forEach((entry) => {
-    entries.push(entry);
-  });
-
-  while (entries.size()) {
-    const oldest = entries.pop();
-    printer.print(oldest.last);
-    const nextEntry = oldest.pop();
-    if (nextEntry) {
-      oldest.last = nextEntry;
-      entries.push(oldest);
+    // print and replace oldest entry, unless all sources drained
+    if (activeSources) {
+      printer.print(printQueue[toPrint]);
+      printQueue[toPrint] = logSources[toPrint].pop();
     }
   }
   printer.done();
 };
-
-module.exports = iterative;

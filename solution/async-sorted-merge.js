@@ -1,30 +1,36 @@
 'use strict'
 
-async function asyncSortedMerge(logSources, printer) {
-  const sourceQty = logSources.length;
-  let drainedSources = 0;
-  let minIndex;
+module.exports = (logSources, printer) => {
+  // initialise list of promises to be printed
+  const printQueuePromises = logSources.map(source => source.popAsync());
 
-  // iterate until all sources are drained
-  while (drainedSources < sourceQty - 1) {
-    // initialize minimum value for date on each iteration
-    let min = Infinity;
-    // reset drained entries count on each iteration
-    drainedSources = 0;
-    // count drained sources and get oldest entry
-    for (let i = 0; i < sourceQty; i += 1) {
-      if (!logSources[i].last) {
-        drainedSources += 1;
-      } else if (logSources[i].last.date < min) {
-        min = logSources[i].last.date;
-        minIndex = i;
+  Promise.all(printQueuePromises)
+    // when all resolved we can begin the comparisons
+    .then(async (printQueue) => {
+      // initialise flag to indicate > 1 sources are active
+      let activeSources = true;
+      while (activeSources) {
+        activeSources = false;
+        let min = Infinity;
+        let toPrint;
+        for (let i = 0; i < printQueue.length; i += 1) {
+          // check current source not drained
+          if (printQueue[i]) {
+            activeSources = true;
+            // update oldest value and index of record to print
+            if (printQueue[i].date < min) {
+              min = printQueue[i].date;
+              toPrint = i;
+            }
+          }
+        }
+        // print and replace oldest entry, unless all sources drained
+        if (activeSources) {
+          printer.print(printQueue[toPrint]);
+          // we must await a new value in order to make a new comparison
+          printQueue[toPrint] = await logSources[toPrint].popAsync();
+        }
       }
-    }
-    printer.print(logSources[minIndex].last);
-    // replace printed entry with next
-    logSources[minIndex].last = await logSources[minIndex].popAsync();
-  }
-  printer.done();
-}
-
-module.exports = asyncSortedMerge;
+      printer.done();
+    });
+};
