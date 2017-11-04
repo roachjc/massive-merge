@@ -28,9 +28,15 @@ module.exports = (logSources, printer) => {
         if (activeSources) {
           printer.print(printQueue[toPrint]);
           // we must await a new value in order to make a new comparison
-          printQueue[toPrint] = await logSources[toPrint].popAsync();
+          try {
+            printQueue[toPrint] = await logSources[toPrint].popAsync();
+          } catch (reason) {
+            throw new Error(`error loading new log entry: ${reason}`);
+          }
         }
       }
       printer.done();
+    }).catch((reason) => {
+      throw new Error(`error loading initial log entries: ${reason}`);
     });
 };
