@@ -21,7 +21,8 @@
     "Faker": "~0.7.0",
     "bluebird": "^3.4.1",
     "heap": "^0.2.6",
-    "lodash": "^4.13.1"
+    "lodash": "^4.13.1",
+    "lodash.sortedindexby": "^4.6.0"
   },
   "devDependencies": {
     "ava": "^0.15.2"
